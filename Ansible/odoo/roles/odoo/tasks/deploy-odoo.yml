@@ -1,0 +1,19 @@
+---
+- name: Clone a repo 
+  ansible.builtin.git:
+    repo: {{ get_url }}
+    dest: {{ git_repo }}
+
+- name: Install setuptools, wheel python package
+  pip:
+    name:
+      - setuptools
+      - wheel
+    chdir: {{ pip_repo }}    
+
+- name: Install specified python requirements
+  pip:
+    requirements: {{ pip_repo }}/requirements.txt
+
+  notify:
+    - reload python3

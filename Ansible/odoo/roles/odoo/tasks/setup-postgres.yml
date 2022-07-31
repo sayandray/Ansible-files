@@ -1,0 +1,23 @@
+---
+- name: "Install packages"
+  apt: name={{ item }} state=present
+  with_items:
+  - postgresql
+  - postgresql-client
+
+
+- name: Create the database specified in vars
+  become: yes
+  command: sudo -u postgres createuser -s ansible
+  args:
+    chdir: "{{ pip_repo }}"
+  ignore_errors: yes
+    
+- name: create new database
+  become: yes
+  command: createdb ansible
+  args:
+    chdir: "{{ pip_repo }}"
+  ignore_errors: yes
+  
+

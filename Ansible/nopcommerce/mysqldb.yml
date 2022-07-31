@@ -1,0 +1,69 @@
+---
+- name: Install mysql
+  hosts: all
+  become: yes  
+  tasks:
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+      update_cache: yes
+
+  - name: install mysql
+    apt: 
+      name: mysql-server
+      update_cache: yes
+      state: present
+    become: yes        
+
+  
+  - name: Start service mysql.service, if not started
+    ansible.builtin.service:
+      name: mysql.service
+      state: started 
+
+  - name: install mysql
+    apt: 
+      name: python3-pip
+      update_cache: yes
+      state: present    
+
+  - name: Install PyMySQL python package
+    pip:
+      name: PyMySQL
+
+  - name: Enable remote login to mysql
+    lineinfile:
+       path: /etc/mysql/mysql.conf.d/mysqld.cnf
+       regexp: '^bind-address'
+       line: 'bind-address = 0.0.0.0'
+       backup: yes
+    notify:
+         - Restart mysql    
+       
+  #- name: Create database user with name 'sayan' and password 'password' with all database privileges
+  #  mysql_user:
+  #    name: sayan
+  #    password: password
+  #    priv: '*.*:ALL'
+  #    state: present    
+  
+  #- name: "Mysql Configuration - Resetting RootPassword"
+  #  mysql_user:
+  #    name: root
+  #    login_user: root
+  #    login_password: password     
+  #    host_all: yes 
+  #    password: password
+
+  - name: "Mysql Configuration - Resetting RootPassword"
+    mysql_user:
+      name: root
+      login_user: root
+      login_password: password     
+      host_all: yes 
+      password: password
+
+  handlers:
+  - name: Restart mysql
+    service:
+      name: mysql
+      state: restarted       

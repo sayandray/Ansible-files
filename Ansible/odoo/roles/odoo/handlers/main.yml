@@ -1,0 +1,5 @@
+---
+- name: reload python3
+  ansible.builtin.command: python3 odoo-bin --addons-path=addons -d mydb &
+  args:
+    chdir: {{ pip_repo }}

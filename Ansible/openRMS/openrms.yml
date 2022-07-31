@@ -1,0 +1,206 @@
+---
+- name: Install Java 8, Apache Tomcat & openMRS
+  hosts: all
+  become: yes  
+  tasks:
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+      update_cache: yes
+
+  - name: install java 8
+    apt:
+      name: openjdk-8-jdk
+      state: present
+      update_cache: yes
+
+  - name: Ensure group "mysql" exists
+    group:
+      name: mysql
+      state: present    
+
+  - name: Add the user 'mysql' with a specific uid and a primary group of 'mysql'
+    ansible.builtin.user:
+      name: mysql
+      uid: 1040
+      group: mysql
+
+  - name: download the debian file
+    get_url:
+      url: https://dev.mysql.com/get/Downloads/MySQL-5.6/mysql-5.6.46-linux-glibc2.12-x86_64.tar.gz
+      dest: /tmp/mysql-5.6.46-linux-glibc2.12-x86_64.tar.gz
+
+  - name: Create a directory if it does not exist
+    ansible.builtin.file:
+      path: /usr/local/mysql
+      state: directory
+      mode: '0755'    
+
+  - name: Unarchive a file that is already on the remote machine
+    ansible.builtin.unarchive:
+      src: /tmp/mysql-5.6.46-linux-glibc2.12-x86_64.tar.gz
+      dest: /usr/local/mysql
+      remote_src: yes    
+        
+  - name: Recursively change ownership of a directory
+    ansible.builtin.file:
+      path: /usr/local/mysql/
+      state: directory
+      recurse: yes
+      owner: mysql
+      group: mysql
+
+  - name: Install apache auth modules
+    apt: name={{ item }} state=present
+    with_items:
+    - libaio1
+    - libncurses5
+    - libnuma-dev
+
+  - name: Copy and Execute the script 
+    script: /home/ansible/openrms/mysql_install_db --user=mysql     
+
+  - name: Recursively change ownership of a directory
+    ansible.builtin.file:
+      path: /usr/local/mysql/
+      state: directory
+      recurse: yes
+      owner: root
+      group: mysql    
+
+  - name: Recursively change ownership of a directory
+    ansible.builtin.file:
+      path: /usr/local/mysql/data/
+      state: directory
+      recurse: yes
+      owner: mysql
+      group: mysql       
+
+  - name: Copy file with owner and permissions
+    ansible.builtin.copy:
+      src: /usr/local/mysql/support-files/my-default.cnf
+      dest: /etc/my.cnf
+      owner: root
+      group: mysql
+      mode: '0644'    
+
+  - name: Copy file with owner and permissions
+    ansible.builtin.copy:
+      src: /usr/local/mysql/support-files/mysql.server
+      dest: /etc/init.d/mysql.server
+      owner: root
+      group: mysql
+      mode: '0644' 
+
+  - name: Run a script with arguments (using 'cmd' parameter)
+    ansible.builtin.script:
+      cmd: /usr/local/mysql/bin/mysqld_safe --user=mysql &  
+
+  - name: Run a script with arguments (using 'cmd' parameter)
+    ansible.builtin.script:
+      cmd: /usr/local/mysql/bin/mysqladmin -u root password newpassword
+
+  - name: Create a symbolic link
+    ansible.builtin.file:
+      src: /usr/local/mysql/bin/mysql
+      dest: /usr/local/bin/mysql
+      owner: root
+      group: mysql
+      state: link  
+
+  - name: Reboot a Linux machine 
+    reboot:
+      reboot_timeout: 350
+
+  - name: Check the Uptime of the servers
+    shell: "uptime"
+    register: Uptime
+
+  - debug: var=Uptime    
+
+  - name: Start service mysql.server , based on running process /usr/bin/foo
+    ansible.builtin.service:
+      name: mysql.server
+      pattern: /etc/init.d/mysql.server
+      state: started   
+
+  - name: Execute the command in remote shell; stdout goes to the specified file on the remote
+    ansible.builtin.shell: update-rc.d -f mysql.server defaults  
+
+  - name: Ensure group "mysql" exists
+    group:
+      name: tomcat
+      state: present  
+  
+  - name: add a tomcat user
+    ansible.builtin.user:
+      name: tomcat
+      home: /opt/tomcat
+      group: tomcat
+      shell: /bin/false
+      state: present
+
+  - name: download the tomcat distribution
+    get_url:
+      url: https://archive.apache.org/dist/tomcat/tomcat-7/v7.0.109/bin/apache-tomcat-7.0.109.tar.gz
+      dest: /tmp/apache-tomcat-7.0.109.tar.gz    
+
+  - name: Create a directory if it does not exist
+    ansible.builtin.file:
+      path: /opt/tomcat
+      state: directory
+      mode: '0755'
+
+  - name: untar the tomcat distribution
+    ansible.builtin.unarchive:
+      src: /tmp/apache-tomcat-7.0.109.tar.gz
+      dest: /opt/tomcat/
+
+  - name: Change file ownership, group and permissions
+    ansible.builtin.file:
+      path: /opt/tomcat
+      owner: tomcat
+      group: tomcat
+      mode: '0644'     
+
+  - name: Touch the same file, but add/remove some permissions
+    ansible.builtin.file:
+      path: /opt/tomcat/conf
+      state: file
+      mode: g+r     
+
+  - name: Touch the same file, but add/remove some permissions
+    ansible.builtin.file:
+      path: /opt/tomcat/conf
+      state: file
+      mode: g+x
+
+  - name: Recursively change ownership of a directory
+    ansible.builtin.file:
+      path: /webapps/work/temp/logs/
+      state: directory
+      recurse: yes
+      owner: tomcat
+      group: tomcat    
+
+  - name: create tomcat.service
+    template:
+      src: /home/ansible/openrms/tomcat.service
+      dest: /etc/systemd/system/tomcat.service
+    notify:
+      -  reload and enable tomcat
+
+  - name: ensure tomcat is running
+    ansible.builtin.systemd:
+      name: tomcat.service
+      state: started
+
+  handlers:
+  - name: reload and enable tomcat
+    ansible.builtin.systemd:
+      name: tomcat.service
+      daemon_reload: yes
+      enabled: yes
+      state: reloaded 
+      state: restarted      
+  
+  

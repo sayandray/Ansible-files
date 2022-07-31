@@ -1,0 +1,10 @@
+---
+# defaults file for postgres
+
+db_user: ansible
+db_name: ansible
+db_pass: ansible
+
+get_url: https://github.com/odoo/odoo.git
+git_repo: /home/ansible/
+pip_repo: /odoo/
